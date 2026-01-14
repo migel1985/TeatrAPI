@@ -52,6 +52,7 @@ CREATE TABLE scenes (
     response TEXT NOT NULL,
     sources TEXT,
     obra_id INT NULL REFERENCES obras(id),
+    fav TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -3,7 +3,7 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
-from models.escenas import create_escena_db, get_escenas_by_capitulo
+from models.escenas import create_escena_db, get_escenas_by_capitulo, toggle_escena_fav
 import os
 
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
@@ -100,4 +100,24 @@ def get_escenas(capitulo_id: int):
         return jsonify({'success': True, 'escenas': escenas}), 200
     except Exception as e:
         print(f"Error escenas: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
+
+# ✅ ENDPOINT FAVORITO (encima de hablar_con_ia)
+@ia_teatro_bp.route('/toggle_fav_escena/<int:escena_id>/<int:user_id>', methods=['PATCH'])
+def toggle_fav_escena(escena_id: int, user_id: int):
+    """Endpoint toggle fav escena S/N"""
+    try:
+        success, result = toggle_escena_fav(escena_id, user_id)
+        
+        if success:
+            return jsonify({
+                'success': True, 
+                'favs': result  # Devuelve "S" o "N"
+            }), 200
+        else:
+            return jsonify({'success': False, 'error': result}), 403
+            
+    except Exception as e:
+        print(f"Error toggle fav: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500

@@ -11,7 +11,7 @@ def get_escenas_by_capitulo(capitulo_id: int) -> List[Dict[str, Any]]:
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
-                SELECT id, chapter_id, query, response, sources, obra_id, created_at
+                SELECT id, chapter_id, query, response, sources, obra_id, created_at, fav
                 FROM scenes 
                 WHERE chapter_id = %s 
                 ORDER BY created_at
@@ -66,3 +66,43 @@ def delete_escena_db(escena_id: int) -> bool:
         raise e
     finally:
         conn.close()
+
+
+def toggle_escena_fav(escena_id: int, user_id: int) -> tuple[bool, str]:
+    """Toggle fav de escena: S/N"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Primero verificar que pertenece al usuario
+            cur.execute("""
+                SELECT fav FROM scenes s
+                JOIN chapters c ON s.chapter_id = c.id
+                WHERE s.id = %s AND c.usuario_id = %s
+            """, (escena_id, user_id))
+            
+            result = cur.fetchone()
+            if not result:
+                return False, "No autorizado"
+            
+            current_fav = result[0]  # None, 'S' o 'N'
+            
+            # Toggle: None/'N' -> 'S', 'S' -> 'N'
+            new_fav = "S" if current_fav != "S" else "N"
+            
+            # Actualizar
+            cur.execute("""
+                UPDATE scenes 
+                SET fav = %s 
+                WHERE id = %s
+            """, (new_fav, escena_id))
+            
+            conn.commit()
+            return True, new_fav
+            
+    except Exception as e:
+        print(f"❌ Miguel: ERROR toggle fav: {str(e)}")
+        conn.rollback()
+        return False, str(e)
+    finally:
+        conn.close()
+
