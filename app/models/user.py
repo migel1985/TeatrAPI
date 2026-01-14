@@ -3,18 +3,55 @@ from sqlalchemy import Column, Integer, String  # ← Quita Base
 from app.core.database import get_db_connection
 import psycopg2
 from psycopg2.extras import RealDictCursor
-
+import hashlib  # ✅ Para hashear contraseña
 
 # ✅ Mantén SOLO las funciones:
 def verify_user_credentials(email: str, password: str):
+    print("Miguel entra en verify_")
     conn = get_db_connection()
     try:
+        # ✅ HASHEAR la contraseña que viene del login ANTES de comparar
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        print("Miguel ", password_hash)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT id, email, nombre, password_hash 
                 FROM usuarios 
                 WHERE email = %s AND password_hash = %s
-            """, (email, password))
+            """, (email, password_hash))  # ✅ Ahora sí coincide
             return cur.fetchone()
+    finally:
+        conn.close()
+
+
+
+def register_user(email: str, password: str, nombre: str):
+    conn = get_db_connection()
+    try:
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Verificar si email ya existe
+            cur.execute("SELECT id FROM usuarios WHERE email = %s", (email,))
+            if cur.fetchone():
+                return None
+            
+            # ✅ INSERT CORREGIDO - dejar que PostgreSQL genere el ID automáticamente
+            cur.execute("""
+                INSERT INTO usuarios (email, password_hash, nombre) 
+                VALUES (%s, %s, %s) 
+                RETURNING id  -- ✅ Esto devuelve el ID autogenerado
+            """, (email, password_hash, nombre))
+            
+            print("Miguel: ", email)
+
+            new_user = cur.fetchone()
+            conn.commit()
+            return new_user['id']  # ✅ Devuelve el ID generado
+            
+    except Exception as e:
+        conn.rollback()
+        print(f"Error en register_user: {e}")
+        return None
     finally:
         conn.close()

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.models.user import verify_user_credentials
+from app.models.user import verify_user_credentials, register_user
 
 # Blueprint para modularidad
 auth_bp = Blueprint('auth', __name__, url_prefix='/teatrapi')
@@ -31,3 +31,32 @@ def default_login():
             
     except Exception as e:
         return jsonify({'error': f'Miguel: Error del servidor: {str(e)}'}), 500
+
+# ✅ NUEVO ENDPOINT REGISTER
+@auth_bp.route('/register', methods=['POST'])
+def register():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        nombre = data.get('nombre')
+        
+        if not all([email, password, nombre]):
+            return jsonify({'error': 'Email, contraseña y nombre son requeridos'}), 400
+        
+        # ✅ Llamar a función de registro
+        user_id = register_user(email, password, nombre)
+        
+        if user_id:
+            return jsonify({
+                'success': True,
+                'message': 'Usuario creado exitosamente',
+                'user_id': user_id
+            }), 201
+        else:
+            return jsonify({
+                'error': 'Email ya existe'
+            }), 409
+            
+    except Exception as e:
+        return jsonify({'error': f'Error del servidor: {str(e)}'}), 500
